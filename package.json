@@ -1,6 +1,6 @@
 {
   "name": "dsh-academic-switch",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "学术模式开关 (Academic Mode switch) for DeepSeek Harness: one switch beside the composer that adds an academic identity and a strict discipline (three-pass source verification, three-pass logic review, multi-source research, pre-delivery checklist) to every step, sends long replies without a verification log back once before the turn ends, and raises each model step to its strongest reasoning effort and full output budget.",
   "type": "module",
   "main": "lib/index.js",
@@ -21,7 +21,9 @@
   ],
   "scripts": {
     "test": "node --test",
-    "sync-skill": "node scripts/sync-skill.mjs"
+    "sync-skill": "node scripts/sync-skill.mjs",
+    "sync-agent": "node scripts/sync-agent.mjs",
+    "sync": "npm run sync-skill && npm run sync-agent"
   },
   "keywords": [
     "dsh",

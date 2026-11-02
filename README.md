@@ -51,17 +51,46 @@ codex plugin add academic-mode@felixfu-plugins
 
 新开会话后生效。输入 `$` 或运行 `/skills` 可以手动选用。只想要技能、不想装插件，见下面的「手动安装」。
 
-### Antigravity
+### Antigravity：自定义智能体（推荐）
 
-Antigravity 读项目里的 `.agents/skills/`。在你的项目目录里运行：
+Antigravity 有两种装法。**自定义智能体**是更接近「模式」的一种：选中它，整场对话都按学术纪律走，不靠模型自己判断要不要载入。它会出现在输入框下方的「Main Agent」下拉里，也出现在「Customizations」页的 Custom Agents 一栏。
+
+智能体就是一个带 YAML 头的 Markdown 文件，仓库里是 [`antigravity/agents/academic-mode.md`](antigravity/agents/academic-mode.md)。把它复制到下面任一位置（`skills` 工具只装技能，不装智能体，所以没有一键命令）：
+
+| 范围 | 位置 |
+| --- | --- |
+| 所有项目 | `~/.gemini/config/agents/academic-mode.md` |
+| 单个项目 | `<项目>/.agents/agents/academic-mode.md` |
+
+PowerShell 里装成全局：
+
+```
+New-Item -ItemType Directory -Force "$HOME\.gemini\config\agents" | Out-Null
+Invoke-WebRequest https://raw.githubusercontent.com/FelixJiashengFu/dsh-academic-switch/main/antigravity/agents/academic-mode.md -OutFile "$HOME\.gemini\config\agents\academic-mode.md"
+```
+
+macOS / Linux：
+
+```
+mkdir -p ~/.gemini/config/agents
+curl -fsSL https://raw.githubusercontent.com/FelixJiashengFu/dsh-academic-switch/main/antigravity/agents/academic-mode.md -o ~/.gemini/config/agents/academic-mode.md
+```
+
+文件头里设了 `mainAgent: true`（可以选作主智能体）和 `subagent: false`（不让规划器把无关任务自动派给它）。`tools`、`model`、`commandExecutionPolicy` 故意不写：Antigravity 的文档提醒 `tools` 写错名字会让智能体卡死，而模型和命令执行策略应当沿用你自己的设置。
+
+已在 Antigravity 44.5.1 上实测：它的语言服务器（`GetAgentScripts`）识别并正确解析了放在 `~/.gemini/config/agents/<名字>.md`、`<项目>/.agents/agents/<名字>.md` 和 `<项目>/.agents/agents/<名字>/agent.md` 的文件，系统提示里包含学术身份和学术纪律；不读 `~/.agents/agents/`。实测只覆盖加载器；选中后模型在对话里的表现没有测。
+
+### Antigravity：技能（备选）
+
+技能只在任务匹配描述、或你输入 `/academic-mode` 时载入。在你的项目目录里运行：
 
 ```
 npx skills add FelixJiashengFu/dsh-academic-switch --skill academic-mode -a antigravity
 ```
 
-或把 `plugins/academic-mode/skills/academic-mode` 整个文件夹复制到 `<项目>/.agents/skills/`。新开对话后生效，在消息框里输入 `/academic-mode` 手动调用。
+或把 `plugins/academic-mode/skills/academic-mode` 整个文件夹复制到 `<项目>/.agents/skills/`。全局位置是 `~/.gemini/config/skills/`。同一个实测显示：它能识别 `<项目>/.agents/skills/` 和 `~/.gemini/config/skills/`，不读 `~/.gemini/antigravity/skills/`、`~/.gemini/skills/` 和 `~/.agents/skills/`。`skills` 工具的文档把 Antigravity 的全局目录写成 `~/.gemini/antigravity/skills/`，所以用它给 Antigravity 装技能时不要加 `-g`。
 
-全局安装放在 `~/.gemini/config/skills/`。已在 Antigravity 44.5.1 上实测：它的语言服务器能识别 `<项目>/.agents/skills/` 和 `~/.gemini/config/skills/` 里的技能，不读 `~/.gemini/antigravity/skills/`、`~/.gemini/skills/` 和 `~/.agents/skills/`。`skills` 工具的文档把 Antigravity 的全局目录写成 `~/.gemini/antigravity/skills/`，所以给 Antigravity 装技能时用项目级安装。实测只覆盖技能加载器；模型在对话里是否选用它，取决于任务和技能描述。
+智能体和技能不要同时装：两份是同一套学术纪律，同时存在会在选中智能体时又被技能再载入一遍。
 
 ### 一条命令装进多个工具
 
@@ -71,7 +100,7 @@ npx skills add FelixJiashengFu/dsh-academic-switch --skill academic-mode -a anti
 npx skills add FelixJiashengFu/dsh-academic-switch --skill academic-mode
 ```
 
-默认装进当前项目，加 `-g` 装成全局。它是第三方工具，会收集匿名使用数据，设置环境变量 `DISABLE_TELEMETRY=1` 可以关闭。给 Antigravity 装技能时不要加 `-g`，原因见上。
+默认装进当前项目，加 `-g` 装成全局。它是第三方工具，会收集匿名使用数据，设置环境变量 `DISABLE_TELEMETRY=1` 可以关闭。给 Antigravity 装技能时不要加 `-g`，原因见上；Antigravity 优先用上面的自定义智能体。
 
 ### 手动安装
 
@@ -166,7 +195,8 @@ plugins/academic-mode/   Claude Code 与 Codex 的插件：两份清单、skills
 .claude-plugin/          Claude Code 的市场清单
 .agents/plugins/         Codex 的市场清单
 skills.sh.json           告诉 skills 工具到哪里找技能
-scripts/                 由 lib/prompt.js 生成技能文件（npm run sync-skill）
+antigravity/agents/      Antigravity 自定义智能体（academic-mode.md）
+scripts/                 由 lib/prompt.js 生成技能与智能体文件（npm run sync）
 test/                    node:test 测试
 CHANGELOG.md             更新日志
 .github/workflows/       GitHub Actions：在 Node 22、24、26 上运行测试
@@ -180,7 +210,7 @@ CHANGELOG.md             更新日志
 npm test
 ```
 
-共 26 个测试。其中 18 个用一个假的 Cordis 上下文运行插件的真实代码，覆盖：开关与状态持久化；两段提示词只注册一次、失败时整体撤回、提示词服务晚到或重载时重新挂载；推理强度与输出预算的选择规则；交付前核查闸门的触发条件、每轮一次的上限与提示消息的格式；重启恢复；路由的来源与请求体校验；浏览器半边的注册位置与初始渲染；提示词的章节顺序、十项自检与核查记录标题识别。另外 8 个检查 Claude Code、Codex 与 Antigravity 的打包：两份插件清单与 npm 包的名称、版本、许可一致；两个市场清单和 `skills.sh.json` 指向存在的目录；技能文件的前置信息合法，正文与 `lib/prompt.js` 逐字一致，并且不含只在 DSH 里成立的说法。
+共 31 个测试。其中 18 个用一个假的 Cordis 上下文运行插件的真实代码，覆盖：开关与状态持久化；两段提示词只注册一次、失败时整体撤回、提示词服务晚到或重载时重新挂载；推理强度与输出预算的选择规则；交付前核查闸门的触发条件、每轮一次的上限与提示消息的格式；重启恢复；路由的来源与请求体校验；浏览器半边的注册位置与初始渲染；提示词的章节顺序、十项自检与核查记录标题识别。另外 8 个检查 Claude Code、Codex 与 Antigravity 的打包：两份插件清单与 npm 包的名称、版本、许可一致；两个市场清单和 `skills.sh.json` 指向存在的目录；技能文件的前置信息合法，正文与 `lib/prompt.js` 逐字一致，并且不含只在 DSH 里成立的说法。再有 5 个检查 Antigravity 智能体文件：文件头只有 name、description、mainAgent、subagent 四项，`tools`、`model`、`commandExecutionPolicy` 保持未设置，正文与提示词逐字一致。
 
 ## 代价
 

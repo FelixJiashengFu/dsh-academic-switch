@@ -1,5 +1,12 @@
 # 更新日志
 
+## 0.3.1 — 2026-11-01
+
+- **新增 Antigravity 自定义智能体** `antigravity/agents/academic-mode.md`：选中后整场对话按学术纪律走，出现在输入框下方的「Main Agent」下拉和「Customizations」页的 Custom Agents 里。文件头设 `mainAgent: true`、`subagent: false`；`tools`、`model`、`commandExecutionPolicy` 故意不写，沿用 Antigravity 默认和你自己的设置。
+- 已在 Antigravity 44.5.1 上实测：它的语言服务器（`GetAgentScripts`）识别并正确解析了全局、项目、文件夹三种放置形式，不读 `~/.agents/agents/`。`GetAllCustomAgentConfigs` 在这个版本里已废弃，不能用于验证。
+- 新增 `npm run sync-agent` 与 `npm run sync`：由 `lib/prompt.js` 生成智能体文件。新增 5 个测试，共 31 个。
+- 智能体放在 `antigravity/agents/`，没有放进 `plugins/academic-mode/agents/`：后者会被 Claude Code 当成子代理自动加载，而这个文件里有它不认识的字段。
+
 ## 0.3.0 — 2026-11-01
 
 - **支持 Claude Code、Codex 和 Antigravity**：仓库同时是 Claude Code 与 Codex 的插件市场（`.claude-plugin/marketplace.json`、`.agents/plugins/marketplace.json`），也是 `skills` 安装工具和 Antigravity 的技能源（`skills.sh.json`）。安装后得到 `academic-mode` 技能，学术身份与学术纪律的文字和 DSH 版逐字相同。开关、全局常开、交付前核查闸门、推理强度与输出预算拉满仍是 DSH 独有。
