@@ -1,7 +1,7 @@
 {
   "name": "dsh-academic-switch",
-  "version": "0.1.0",
-  "description": "学术模式开关 (Academic Mode switch) for DeepSeek Harness: one switch beside the composer that adds three-pass source verification, three-pass logic review and multi-source research to every step, and raises each model step to its strongest reasoning effort and full output budget.",
+  "version": "0.2.0",
+  "description": "学术模式开关 (Academic Mode switch) for DeepSeek Harness: one switch beside the composer that adds an academic identity and a strict discipline (three-pass source verification, three-pass logic review, multi-source research, pre-delivery checklist) to every step, sends long replies without a verification log back once before the turn ends, and raises each model step to its strongest reasoning effort and full output budget.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -16,7 +16,8 @@
     "locale/*.json",
     "icon.svg",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "test": "node --test"

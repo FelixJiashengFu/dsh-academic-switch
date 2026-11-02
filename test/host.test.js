@@ -12,9 +12,22 @@ process.env.USERPROFILE = home
 process.env.HOME = home
 
 const plugin = await import('../lib/index.js')
-const { ACADEMIC_PROMPT } = await import('../lib/prompt.js')
-const { MODE_TITLE, ROUTE_STATE, SECTION_NAME, SECTION_ORDER } = await import('../lib/protocol.js')
+const { ACADEMIC_IDENTITY, ACADEMIC_PROMPT, DELIVERY_GATE_NOTICE } = await import('../lib/prompt.js')
+const {
+	GATE_MIN_CHARS,
+	IDENTITY_SECTION_NAME,
+	IDENTITY_SECTION_ORDER,
+	MODE_TITLE,
+	NOTICE_SOURCE_KIND,
+	NOTICE_SUMMARY,
+	ROUTE_STATE,
+	SECTION_NAME,
+	SECTION_ORDER
+} = await import('../lib/protocol.js')
 const STATE_FILE = join(home, '.dsh', 'academic-switch.json')
+
+const IDENTITY = { name: IDENTITY_SECTION_NAME, order: IDENTITY_SECTION_ORDER, text: ACADEMIC_IDENTITY, interpolate: false }
+const DISCIPLINE = { name: SECTION_NAME, order: SECTION_ORDER, text: ACADEMIC_PROMPT, interpolate: false }
 
 beforeEach(async () => { await rm(STATE_FILE, { force: true }) })
 after(async () => { await rm(home, { recursive: true, force: true }) })
@@ -32,9 +45,9 @@ function once(fn) {
 
 /**
  * A minimal host: plugin context, prompt registry, web server and llm.
- * @param {{ llm?: object, promptAvailable?: boolean }} [options]
+ * @param {{ llm?: object, promptAvailable?: boolean, failSection?: string }} [options]
  */
-function createHost({ llm, promptAvailable = true } = {}) {
+function createHost({ llm, promptAvailable = true, failSection } = {}) {
 	const listeners = new Map()
 	const sections = []
 	const routes = []
@@ -63,6 +76,7 @@ function createHost({ llm, promptAvailable = true } = {}) {
 		fork.systemPrompt = {
 			section(entry) {
 				if (!Number.isFinite(entry.order)) throw new TypeError('order must be finite')
+				if (entry.name === failSection) throw new Error(`registry refused ${entry.name}`)
 				if (sections.some((s) => s.name === entry.name)) throw new Error(`duplicate section ${entry.name}`)
 				sections.push(entry)
 				const dispose = once(() => {
@@ -169,6 +183,29 @@ function fakeLlm(byModel) {
 	}
 }
 
+/** A fake agent whose steering is recorded. */
+function fakeAgent() {
+	return {
+		session: { id: 'session-1' },
+		steered: [],
+		steer(message) { this.steered.push(message) }
+	}
+}
+
+/** Feed one turn's assistant messages through the session event stream. */
+function playTurn(host, session, turn, texts) {
+	const onEvent = host.listener('session/event')
+	onEvent(session, { type: 'turn/start', data: { turn } })
+	for (const text of texts) {
+		onEvent(session, {
+			type: 'assistant/message',
+			data: { turn, step: 1, message: { role: 'assistant', content: [{ type: 'thinking', thinking: 'hidden' }, { type: 'text', text }] } }
+		})
+	}
+}
+
+const LONG = '结论'.repeat(GATE_MIN_CHARS)
+
 test('starts off and serves its state on the loopback route', async () => {
 	const host = createHost({ llm: fakeLlm({}) })
 	plugin.apply(host.ctx)
@@ -180,32 +217,37 @@ test('starts off and serves its state on the loopback route', async () => {
 	assert.equal(body.ok, true)
 	assert.equal(body.enabled, false)
 	assert.equal(body.lastError, null)
+	assert.deepEqual(body.gate, { count: 0, lastAt: null })
 	assert.equal(host.sections.length, 0)
 })
 
-test('turning on mounts the literal discipline section once and persists the state', async () => {
+test('turning on mounts the identity and discipline sections once and persists the state', async () => {
 	const host = createHost({ llm: fakeLlm({}) })
 	plugin.apply(host.ctx)
 
 	const on = await call(host, { method: 'POST', body: { enabled: true } })
 	assert.equal(on.status, 200)
 	assert.equal(on.body.enabled, true)
-	assert.deepEqual(host.sections, [{
-		name: SECTION_NAME,
-		order: SECTION_ORDER,
-		text: ACADEMIC_PROMPT,
-		interpolate: false
-	}])
+	assert.deepEqual(host.sections, [IDENTITY, DISCIPLINE])
 	assert.deepEqual(JSON.parse(await readFile(STATE_FILE, 'utf8')), { enabled: true, title: MODE_TITLE })
 
 	const again = await call(host, { method: 'POST', body: { enabled: true } })
 	assert.equal(again.status, 200)
-	assert.equal(host.sections.length, 1, 'a repeated "on" does not register a second section')
+	assert.equal(host.sections.length, 2, 'a repeated "on" does not register the sections again')
 
 	const off = await call(host, { method: 'POST', body: { enabled: false } })
 	assert.equal(off.body.enabled, false)
 	assert.equal(host.sections.length, 0)
 	assert.deepEqual(JSON.parse(await readFile(STATE_FILE, 'utf8')), { enabled: false, title: MODE_TITLE })
+})
+
+test('never leaves half the mode registered when the registry refuses a section', async () => {
+	const host = createHost({ llm: fakeLlm({}), failSection: SECTION_NAME })
+	plugin.apply(host.ctx)
+	const on = await call(host, { method: 'POST', body: { enabled: true } })
+	assert.equal(on.body.enabled, true)
+	assert.equal(host.sections.length, 0, 'the identity section was rolled back')
+	assert.match(on.body.lastError, /registry refused/)
 })
 
 test('raises each model step to the strongest advertised effort and the full output budget', async () => {
@@ -261,7 +303,7 @@ test('raises each model step to the strongest advertised effort and the full out
 	assert.equal((await call(host)).body.lastError, null, 'a later success clears the error')
 })
 
-test('mounts the section when the prompt registry arrives late and re-mounts after it returns', async () => {
+test('mounts the sections when the prompt registry arrives late and re-mounts after it returns', async () => {
 	const host = createHost({ llm: fakeLlm({}), promptAvailable: false })
 	plugin.apply(host.ctx)
 
@@ -271,7 +313,7 @@ test('mounts the section when the prompt registry arrives late and re-mounts aft
 	assert.match(on.body.lastError, /systemPrompt/)
 
 	host.providePrompt()
-	assert.equal(host.sections.length, 1)
+	assert.deepEqual(host.sections, [IDENTITY, DISCIPLINE])
 	assert.equal((await call(host)).body.lastError, null)
 
 	host.withdrawPrompt()
@@ -279,26 +321,27 @@ test('mounts the section when the prompt registry arrives late and re-mounts aft
 	assert.match((await call(host)).body.lastError, /systemPrompt/, 'a vanished registry is reported, not hidden')
 
 	host.providePrompt()
-	assert.equal(host.sections.length, 1, 'the section comes back with the registry')
+	assert.equal(host.sections.length, 2, 'the sections come back with the registry')
 	assert.equal((await call(host)).body.lastError, null)
 
 	await call(host, { method: 'POST', body: { enabled: false } })
 	assert.equal(host.sections.length, 0)
 })
 
-test('keeps exactly one section when a new registry fork arrives before the old one is disposed', async () => {
+test('keeps exactly one copy of the sections when a new registry fork arrives before the old one is disposed', async () => {
 	const host = createHost({ llm: fakeLlm({}) })
 	plugin.apply(host.ctx)
 	await call(host, { method: 'POST', body: { enabled: true } })
-	assert.equal(host.sections.length, 1)
+	assert.equal(host.sections.length, 2)
 
 	host.providePrompt()
-	assert.equal(host.sections.length, 1, 'moved to the new fork, not duplicated')
-	const active = host.sections[0]
+	assert.equal(host.sections.length, 2, 'moved to the new fork, not duplicated')
+	const [identity, discipline] = host.sections
 
 	host.withdrawPrompt()
-	assert.equal(host.sections.length, 1, 'disposing the old fork leaves the new fork\'s section alone')
-	assert.equal(host.sections[0], active, 'the active registration is not torn down and re-made')
+	assert.equal(host.sections.length, 2, 'disposing the old fork leaves the new fork\'s sections alone')
+	assert.equal(host.sections[0], identity, 'the active registrations are not torn down and re-made')
+	assert.equal(host.sections[1], discipline)
 	assert.equal((await call(host)).body.lastError, null)
 
 	host.withdrawPrompt()
@@ -313,15 +356,95 @@ test('falls back to an older registry fork when the newer one goes first', async
 	plugin.apply(host.ctx)
 	await call(host, { method: 'POST', body: { enabled: true } })
 	host.providePrompt()
-	assert.equal(host.sections.length, 1)
+	assert.equal(host.sections.length, 2)
 
 	host.withdrawNewestPrompt()
-	assert.equal(host.sections.length, 1, 'remounted on the fork that is still alive')
+	assert.equal(host.sections.length, 2, 'remounted on the fork that is still alive')
 	assert.equal((await call(host)).body.lastError, null)
 
 	host.withdrawPrompt()
 	assert.equal(host.sections.length, 0)
 	assert.match((await call(host)).body.lastError, /systemPrompt/)
+})
+
+test('delivery gate sends a long reply without a verification log back once per turn', async () => {
+	const host = createHost({ llm: fakeLlm({}) })
+	plugin.apply(host.ctx)
+	await call(host, { method: 'POST', body: { enabled: true } })
+	const stopping = host.listener('agent/turn-stopping')
+	const agent = fakeAgent()
+	const signal = new AbortController().signal
+
+	playTurn(host, agent.session, 3, [LONG])
+	await stopping({ agent, turn: 3, signal })
+	assert.equal(agent.steered.length, 1)
+
+	const [message] = agent.steered
+	assert.equal(message.role, 'user')
+	assert.match(message.id, /^[0-9a-f-]{36}$/)
+	assert.deepEqual(message.source, { kind: NOTICE_SOURCE_KIND, form: 'notice', summary: NOTICE_SUMMARY })
+	assert.deepEqual(message.content, [{ type: 'text', text: DELIVERY_GATE_NOTICE }])
+	assert.ok(Object.isFrozen(message) && Object.isFrozen(message.content[0]) && Object.isFrozen(message.source), 'the message is frozen like createUserMessage output')
+
+	// The steered step answers without a log again: the turn still closes.
+	host.listener('session/event')(agent.session, {
+		type: 'assistant/message',
+		data: { turn: 3, step: 2, message: { content: [{ type: 'text', text: LONG }] } }
+	})
+	await stopping({ agent, turn: 3, signal })
+	assert.equal(agent.steered.length, 1, 'never more than once per turn')
+
+	const state = await call(host)
+	assert.equal(state.body.gate.count, 1)
+	assert.equal(typeof state.body.gate.lastAt, 'number')
+
+	playTurn(host, agent.session, 4, [LONG])
+	await stopping({ agent, turn: 4, signal })
+	assert.equal(agent.steered.length, 2, 'a new turn is checked again')
+})
+
+test('delivery gate lets through replies that carry a log, are short, or are not its business', async () => {
+	const host = createHost({ llm: fakeLlm({}) })
+	plugin.apply(host.ctx)
+	const stopping = host.listener('agent/turn-stopping')
+	const agent = fakeAgent()
+	const signal = new AbortController().signal
+
+	playTurn(host, agent.session, 1, [LONG])
+	await stopping({ agent, turn: 1, signal })
+	assert.equal(agent.steered.length, 0, 'switch off: no gate')
+
+	await call(host, { method: 'POST', body: { enabled: true } })
+
+	playTurn(host, agent.session, 2, [LONG + '\n\n## 六、核查记录\n\n| 来源 | 第一遍 |'])
+	await stopping({ agent, turn: 2, signal })
+	assert.equal(agent.steered.length, 0, 'a reply with a verification log passes')
+
+	playTurn(host, agent.session, 3, ['好的，已开启学术模式。'])
+	await stopping({ agent, turn: 3, signal })
+	assert.equal(agent.steered.length, 0, 'a short reply passes')
+
+	playTurn(host, agent.session, 4, ['**核查记录**\n已完成三遍核查。', LONG])
+	await stopping({ agent, turn: 4, signal })
+	assert.equal(agent.steered.length, 0, 'a log earlier in the same turn counts')
+
+	playTurn(host, agent.session, 5, [LONG])
+	const aborted = new AbortController()
+	aborted.abort()
+	await stopping({ agent, turn: 5, signal: aborted.signal })
+	assert.equal(agent.steered.length, 0, 'a cancelled turn is left alone')
+
+	playTurn(host, agent.session, 6, [LONG])
+	await stopping({ agent, turn: 7, signal })
+	assert.equal(agent.steered.length, 0, 'a turn the gate did not watch is left alone')
+
+	await stopping({ agent: {}, turn: 6, signal })
+	await stopping({ agent: { session: agent.session }, turn: 6, signal })
+	assert.equal(agent.steered.length, 0, 'an agent without a session or steer() is left alone')
+
+	playTurn(host, agent.session, 8, ['后面我会在核查记录中补充来源。' + LONG])
+	await stopping({ agent, turn: 8, signal })
+	assert.equal(agent.steered.length, 1, 'a sentence that only mentions the log does not count as one')
 })
 
 test('restores the switch after a restart', async () => {
@@ -331,7 +454,7 @@ test('restores the switch after a restart', async () => {
 	plugin.apply(host.ctx)
 	const { body } = await call(host)
 	assert.equal(body.enabled, true, 'the route waits for the restore before answering')
-	assert.equal(host.sections.length, 1)
+	assert.equal(host.sections.length, 2)
 })
 
 test('refuses callers it should not serve', async () => {
