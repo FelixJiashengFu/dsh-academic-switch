@@ -1,0 +1,6 @@
+# The host half of 学术模式开关 (Academic Mode switch). The `dsh.client` field in
+# package.json tells the loader to also ship lib/client.js to the Web client,
+# which draws the switch beside the composer.
+- insert:
+    - id: academic-switch
+      name: dsh-academic-switch

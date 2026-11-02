@@ -1,0 +1,56 @@
+{
+  "name": "dsh-academic-switch",
+  "version": "0.1.0",
+  "description": "学术模式开关 (Academic Mode switch) for DeepSeek Harness: one switch beside the composer that adds three-pass source verification, three-pass logic review and multi-source research to every step, and raises each model step to its strongest reasoning effort and full output budget.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "lib/",
+    "locale/*.json",
+    "icon.svg",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "academic",
+    "mode",
+    "rigor",
+    "citation",
+    "fact-check",
+    "max-effort"
+  ],
+  "license": "MIT",
+  "author": "Jiasheng Fu",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FelixJiashengFu/dsh-academic-switch.git"
+  },
+  "homepage": "https://github.com/FelixJiashengFu/dsh-academic-switch#readme",
+  "bugs": {
+    "url": "https://github.com/FelixJiashengFu/dsh-academic-switch/issues"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  }
+}
