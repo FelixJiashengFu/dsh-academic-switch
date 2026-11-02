@@ -1,0 +1,20 @@
+{
+  "name": "felixfu-plugins",
+  "interface": {
+    "displayName": "Felix Fu · 学术工具"
+  },
+  "plugins": [
+    {
+      "name": "academic-mode",
+      "source": {
+        "source": "local",
+        "path": "./plugins/academic-mode"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

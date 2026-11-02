@@ -7,7 +7,9 @@
 - **关**：一切照旧，插件只在后台待命。
 - **开**：从下一条消息起，对所有会话（包括子代理）生效：系统提示加入学术身份与学术纪律，每一步模型调用推到该模型支持的上限，较长的回复如果没有「核查记录」，会在本轮结束前被退回补查一次。
 
-## 安装
+> 用 Claude Code、Codex 或 Antigravity？跳到「在 Claude Code、Codex、Antigravity 里使用」。那边只装学术纪律技能，没有开关、全局常开和交付前核查闸门。
+
+## 安装（DeepSeek Harness）
 
 在 DeepSeek Harness 的 **插件 → 添加插件** 里填入本仓库地址，点 **安装**，装好后点 **立即启用**：
 
@@ -24,6 +26,62 @@ plugin_manager action=install_bundle target=<本目录绝对路径>
 ```
 
 卸载：在插件页卸载，或 `plugin_manager action=remove_bundle target=dsh-academic-switch`。
+
+## 在 Claude Code、Codex、Antigravity 里使用
+
+同一个仓库也是这三个工具的安装源，装上后得到「学术模式」技能（`academic-mode`）：任务匹配技能描述，或你手动调用它时，整个会话按下文的学术纪律工作。技能文本和 DSH 版逐字相同，由 `lib/prompt.js` 生成（`npm run sync-skill`）。
+
+技能只带来提示词纪律。输入框开关、全局常开、交付前核查闸门、推理强度与输出预算拉满，依赖 DSH 的插件接口，这三个工具里没有。需要更高的推理强度时，在各工具自己的设置里调。
+
+### Claude Code
+
+```
+/plugin marketplace add FelixJiashengFu/dsh-academic-switch
+/plugin install academic-mode@felixfu-plugins
+```
+
+在终端里用 `claude plugin marketplace add …` 和 `claude plugin install …` 同样可行；Claude Code 2.1.275 或更高版本也可以一步完成：`/plugin install academic-mode --marketplace FelixJiashengFu/dsh-academic-switch`。装好后重启会话或运行 `/reload-plugins`，手动调用用 `/academic-mode:academic-mode`。
+
+### Codex
+
+```
+codex plugin marketplace add FelixJiashengFu/dsh-academic-switch
+codex plugin add academic-mode@felixfu-plugins
+```
+
+新开会话后生效。输入 `$` 或运行 `/skills` 可以手动选用。只想要技能、不想装插件，见下面的「手动安装」。
+
+### Antigravity
+
+Antigravity App 和命令行（`agy`）都读项目里的 `.agents/skills/`。在你的项目目录里运行：
+
+```
+npx skills add FelixJiashengFu/dsh-academic-switch --skill academic-mode -a antigravity
+```
+
+或把 `plugins/academic-mode/skills/academic-mode` 整个文件夹复制到 `<项目>/.agents/skills/`。新开对话后生效，在消息框里输入 `/academic-mode` 手动调用。
+
+全局安装放在 `~/.gemini/config/skills/`（Antigravity 官方文档给出的位置）。`skills` 工具和一些教程写的却是 `~/.gemini/antigravity/skills/`，两处不一致，所以拿不准时用项目级安装。
+
+### 一条命令装进多个工具
+
+[`skills`](https://github.com/vercel-labs/skills) 是社区的技能安装工具（需要 Node.js 22.20 或更高版本），会检测你装了哪些工具并让你勾选：
+
+```
+npx skills add FelixJiashengFu/dsh-academic-switch --skill academic-mode
+```
+
+默认装进当前项目，加 `-g` 装成全局。它是第三方工具，会收集匿名使用数据，设置环境变量 `DISABLE_TELEMETRY=1` 可以关闭。Antigravity 不建议用 `-g`，原因见上。
+
+### 手动安装
+
+把 `plugins/academic-mode/skills/academic-mode` 整个文件夹复制到：
+
+| 工具 | 用户级目录 | 项目级目录 |
+| --- | --- | --- |
+| Claude Code | `~/.claude/skills/` | `<项目>/.claude/skills/` |
+| Codex | `~/.agents/skills/` | `<项目>/.agents/skills/` |
+| Antigravity | `~/.gemini/config/skills/` | `<项目>/.agents/skills/` |
 
 ## 它做了什么
 
@@ -95,18 +153,23 @@ POST 请求体为 `{ "enabled": true }` 或 `{ "enabled": false }`。`applied` �
 ## 结构
 
 ```
-package.json        dsh.bundle.patch + dsh.client（把 lib/client.js 送进 Web 客户端）
-cordis.patch.yml    Host 半边的挂载行
-lib/protocol.js     路由、段落名与位置、闸门参数（浏览器半边复制路由常量）
-lib/prompt.js       学术身份、学术纪律与闸门提示的全文
-lib/index.js        Host：状态持久化、回环路由、agent/request、systemPrompt 段落、交付前核查闸门
-lib/client.js       浏览器：深蓝开关（只依赖 react，无 JSX、无 import）
-locale/zh.json      插件市场里的中文名与简介
-locale/en.json      英文名与简介
-icon.svg            学位帽图标
-test/               node:test 测试
-CHANGELOG.md        更新日志
-.github/workflows/  GitHub Actions：在 Node 22、24、26 上运行测试
+package.json             dsh.bundle.patch + dsh.client（把 lib/client.js 送进 Web 客户端）
+cordis.patch.yml         Host 半边的挂载行
+lib/protocol.js          路由、段落名与位置、闸门参数（浏览器半边复制路由常量）
+lib/prompt.js            学术身份、学术纪律与闸门提示的全文（唯一来源）
+lib/index.js             Host：状态持久化、回环路由、agent/request、systemPrompt 段落、交付前核查闸门
+lib/client.js            浏览器：深蓝开关（只依赖 react，无 JSX、无 import）
+locale/zh.json           插件市场里的中文名与简介
+locale/en.json           英文名与简介
+icon.svg                 学位帽图标
+plugins/academic-mode/   Claude Code 与 Codex 的插件：两份清单、skills/academic-mode/SKILL.md、LICENSE
+.claude-plugin/          Claude Code 的市场清单
+.agents/plugins/         Codex 的市场清单
+skills.sh.json           告诉 skills 工具到哪里找技能
+scripts/                 由 lib/prompt.js 生成技能文件（npm run sync-skill）
+test/                    node:test 测试
+CHANGELOG.md             更新日志
+.github/workflows/       GitHub Actions：在 Node 22、24、26 上运行测试
 ```
 
 ## 测试
@@ -117,7 +180,7 @@ CHANGELOG.md        更新日志
 npm test
 ```
 
-18 个测试用一个假的 Cordis 上下文运行插件的真实代码，覆盖：开关与状态持久化；两段提示词只注册一次、失败时整体撤回、提示词服务晚到或重载时重新挂载；推理强度与输出预算的选择规则；交付前核查闸门的触发条件、每轮一次的上限与提示消息的格式；重启恢复；路由的来源与请求体校验；浏览器半边的注册位置与初始渲染；提示词的章节顺序、十项自检与核查记录标题识别。
+共 26 个测试。其中 18 个用一个假的 Cordis 上下文运行插件的真实代码，覆盖：开关与状态持久化；两段提示词只注册一次、失败时整体撤回、提示词服务晚到或重载时重新挂载；推理强度与输出预算的选择规则；交付前核查闸门的触发条件、每轮一次的上限与提示消息的格式；重启恢复；路由的来源与请求体校验；浏览器半边的注册位置与初始渲染；提示词的章节顺序、十项自检与核查记录标题识别。另外 8 个检查 Claude Code、Codex 与 Antigravity 的打包：两份插件清单与 npm 包的名称、版本、许可一致；两个市场清单和 `skills.sh.json` 指向存在的目录；技能文件的前置信息合法，正文与 `lib/prompt.js` 逐字一致，并且不含只在 DSH 里成立的说法。
 
 ## 代价
 
@@ -125,7 +188,7 @@ npm test
 
 ## English
 
-Academic Mode switch for DeepSeek Harness. While it is on, every session gets an academic identity and a strict discipline in its system prompt (research plan, three-pass source verification, three-pass logic review, multi-source research, a ten-item pre-delivery checklist and a verification log), each model step runs at its strongest advertised reasoning effort and full output budget, and a long final reply without a verification log is sent back once before the turn closes. The prompt text is in Chinese and the model answers in the user's language. Install it from this repository's URL in the plugin page; run the tests with `npm test` on Node.js 22 or later.
+Academic Mode switch for DeepSeek Harness. While it is on, every session gets an academic identity and a strict discipline in its system prompt (research plan, three-pass source verification, three-pass logic review, multi-source research, a ten-item pre-delivery checklist and a verification log), each model step runs at its strongest advertised reasoning effort and full output budget, and a long final reply without a verification log is sent back once before the turn closes. The prompt text is in Chinese and the model answers in the user's language. Install it from this repository's URL in the plugin page; run the tests with `npm test` on Node.js 22 or later. The repository is also a plugin marketplace for Claude Code and Codex and a skill source for Antigravity (`npx skills add FelixJiashengFu/dsh-academic-switch`). Those tools get the discipline as a skill, without the switch, the delivery gate or the reasoning-effort settings.
 
 ## 许可
 

@@ -1,5 +1,12 @@
 # 更新日志
 
+## 0.3.0 — 2026-11-01
+
+- **支持 Claude Code、Codex 和 Antigravity**：仓库同时是 Claude Code 与 Codex 的插件市场（`.claude-plugin/marketplace.json`、`.agents/plugins/marketplace.json`），也是 `skills` 安装工具和 Antigravity 的技能源（`skills.sh.json`）。安装后得到 `academic-mode` 技能，学术身份与学术纪律的文字和 DSH 版逐字相同。开关、全局常开、交付前核查闸门、推理强度与输出预算拉满仍是 DSH 独有。
+- 学术纪律去掉了「推理强度与输出预算已拉到上限」一句：它只在 DSH 里成立，技能在其他工具里改不了模型参数。
+- 新增 `npm run sync-skill`：由 `lib/prompt.js` 生成技能文件。新增 8 个打包测试，检查两份插件清单与 npm 包的名称、版本、许可一致，两个市场清单和 `skills.sh.json` 指向存在的目录，技能文件的前置信息合法且正文与提示词逐字一致。测试增至 26 个。
+- 新增 `.gitattributes`，统一使用 LF 换行，避免 Windows 上克隆后技能文件变成 CRLF。
+
 ## 0.2.0 — 2026-11-01
 
 - **学术纪律全面加强**（八章，约 4,300 字）：

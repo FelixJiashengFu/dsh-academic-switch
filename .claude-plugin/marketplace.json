@@ -1,0 +1,16 @@
+{
+  "name": "felixfu-plugins",
+  "owner": {
+    "name": "Jiasheng Fu"
+  },
+  "metadata": {
+    "description": "Jiasheng Fu 的学术研究类插件。目前收录 academic-mode：三遍资料核查、三遍逻辑检查、交付前自检。"
+  },
+  "plugins": [
+    {
+      "name": "academic-mode",
+      "source": "./plugins/academic-mode",
+      "description": "学术模式：每个来源三遍真实性核查、每份交付三遍逻辑检查、多方面查找资料，并附核查记录。"
+    }
+  ]
+}

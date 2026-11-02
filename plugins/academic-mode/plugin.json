@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "academic-mode",
+  "version": "0.3.0",
+  "description": "学术模式：每个来源三遍真实性核查、每份交付三遍逻辑检查、多方面查找资料、交付前十项自检，并附核查记录。",
+  "author": {
+    "name": "Jiasheng Fu",
+    "url": "https://github.com/FelixJiashengFu"
+  },
+  "homepage": "https://github.com/FelixJiashengFu/dsh-academic-switch#readme",
+  "repository": "https://github.com/FelixJiashengFu/dsh-academic-switch",
+  "license": "MIT",
+  "keywords": ["academic", "research", "citation", "fact-checking", "verification"]
+}
