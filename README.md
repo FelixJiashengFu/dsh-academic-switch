@@ -53,7 +53,7 @@ codex plugin add academic-mode@felixfu-plugins
 
 ### Antigravity
 
-Antigravity App 和命令行（`agy`）都读项目里的 `.agents/skills/`。在你的项目目录里运行：
+Antigravity 读项目里的 `.agents/skills/`。在你的项目目录里运行：
 
 ```
 npx skills add FelixJiashengFu/dsh-academic-switch --skill academic-mode -a antigravity
@@ -61,7 +61,7 @@ npx skills add FelixJiashengFu/dsh-academic-switch --skill academic-mode -a anti
 
 或把 `plugins/academic-mode/skills/academic-mode` 整个文件夹复制到 `<项目>/.agents/skills/`。新开对话后生效，在消息框里输入 `/academic-mode` 手动调用。
 
-全局安装放在 `~/.gemini/config/skills/`（Antigravity 官方文档给出的位置）。`skills` 工具和一些教程写的却是 `~/.gemini/antigravity/skills/`，两处不一致，所以拿不准时用项目级安装。
+全局安装放在 `~/.gemini/config/skills/`。已在 Antigravity 44.5.1 上实测：它的语言服务器能识别 `<项目>/.agents/skills/` 和 `~/.gemini/config/skills/` 里的技能，不读 `~/.gemini/antigravity/skills/`、`~/.gemini/skills/` 和 `~/.agents/skills/`。`skills` 工具的文档把 Antigravity 的全局目录写成 `~/.gemini/antigravity/skills/`，所以给 Antigravity 装技能时用项目级安装。实测只覆盖技能加载器；模型在对话里是否选用它，取决于任务和技能描述。
 
 ### 一条命令装进多个工具
 
@@ -71,7 +71,7 @@ npx skills add FelixJiashengFu/dsh-academic-switch --skill academic-mode -a anti
 npx skills add FelixJiashengFu/dsh-academic-switch --skill academic-mode
 ```
 
-默认装进当前项目，加 `-g` 装成全局。它是第三方工具，会收集匿名使用数据，设置环境变量 `DISABLE_TELEMETRY=1` 可以关闭。Antigravity 不建议用 `-g`，原因见上。
+默认装进当前项目，加 `-g` 装成全局。它是第三方工具，会收集匿名使用数据，设置环境变量 `DISABLE_TELEMETRY=1` 可以关闭。给 Antigravity 装技能时不要加 `-g`，原因见上。
 
 ### 手动安装
 
